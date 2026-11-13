@@ -217,69 +217,40 @@ export default function HomePage() {
               View All Marketplace &rarr;
             </Link>
           </div>
-          <div className="listing-grid">
-            {(recentListings.length > 0 ? recentListings : [
-              {
-                id: 1,
-                title: "MacBook Pro 14\"",
-                price: 70550,
-                condition: "LIKE_NEW",
-                category: "ELECTRONICS",
-                imageUrls: ["/images/listing-macbook-pro-14.jpg"]
-              },
-              {
-                id: 2,
-                title: "Levi's Denim Jacket",
-                price: 2905,
-                condition: "GOOD",
-                category: "ACCESSORIES",
-                imageUrls: ["/images/listing-levis-denim-jacket.jpg"]
-              },
-              {
-                id: 3,
-                title: "Psychology Bundle",
-                price: 3320,
-                condition: "FAIR",
-                category: "BOOKS",
-                imageUrls: ["/images/listing-psychology-bundle.jpg"]
-              },
-              {
-                id: 4,
-                title: "Nike Air Force 1",
-                price: 5395,
-                condition: "LIKE_NEW",
-                category: "ACCESSORIES",
-                imageUrls: ["/images/listing-nike-air-force-1.jpg"]
-              }
-            ]).map((item) => {
-              const cover = item.imageUrls?.[0];
-              return (
-                <Link
-                  key={item.id}
-                  href={`/marketplace/${item.id}`}
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  <article className="listing-card" style={{ borderRadius: "14px" }}>
-                    <div
-                      className="listing-image-box"
-                      style={{
-                        height: "110px",
-                        background: cover ? `url(${cover}) center/cover no-repeat` : "#f3f4f6",
-                        borderRadius: "14px 14px 0 0"
-                      }}
-                    />
-                    <div className="badge" style={{ top: "8px", left: "8px", fontSize: "9px", padding: "2px 6px" }}>
-                      {item.condition.replace("_", " ")}
-                    </div>
-                    <div className="listing-body" style={{ padding: "8px 12px 10px" }}>
-                      <h3 style={{ fontSize: "13px", margin: "0 0 2px", fontWeight: 600 }}>{item.title}</h3>
-                      <p style={{ fontSize: "11px" }}>₹{Number(item.price || 0).toLocaleString()} • {item.category}</p>
-                    </div>
-                  </article>
-                </Link>
-              );
-            })}
-          </div>
+          {recentListings.length === 0 ? (
+            <p>No listings yet. Be the first to add one.</p>
+          ) : (
+            <div className="listing-grid">
+              {recentListings.map((item) => {
+                const cover = item.imageUrls?.[0];
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/marketplace/${item.id}`}
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <article className="listing-card" style={{ borderRadius: "14px" }}>
+                      <div
+                        className="listing-image-box"
+                        style={{
+                          height: "110px",
+                          background: cover ? `url(${cover}) center/cover no-repeat` : "#f3f4f6",
+                          borderRadius: "14px 14px 0 0"
+                        }}
+                      />
+                      <div className="badge" style={{ top: "8px", left: "8px", fontSize: "9px", padding: "2px 6px" }}>
+                        {item.condition.replace("_", " ")}
+                      </div>
+                      <div className="listing-body" style={{ padding: "8px 12px 10px" }}>
+                        <h3 style={{ fontSize: "13px", margin: "0 0 2px", fontWeight: 600 }}>{item.title}</h3>
+                        <p style={{ fontSize: "11px" }}>₹{Number(item.price || 0).toLocaleString()} • {item.category}</p>
+                      </div>
+                    </article>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <section className="demand-heatmap" aria-labelledby="demand-heatmap-title">

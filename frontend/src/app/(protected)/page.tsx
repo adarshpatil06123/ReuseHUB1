@@ -1,36 +1,5 @@
 import Link from "next/link";
 
-const listings = [
-  {
-    title: "MacBook Pro 14\"",
-    price: "₹70,550",
-    condition: "Used - Like New",
-    footnote: "Saves 120kg CO2",
-    image: "img-card macbook"
-  },
-  {
-    title: "Levi's Denim Jacket",
-    price: "₹2,905",
-    condition: "Used - Good",
-    footnote: "Saves 15kg CO2",
-    image: "img-card jacket"
-  },
-  {
-    title: "Psychology Bundle",
-    price: "₹3,320",
-    condition: "Used - Fair",
-    footnote: "Saves 9kg CO2",
-    image: "img-card books"
-  },
-  {
-    title: "Nike Air Force 1",
-    price: "₹5,395",
-    condition: "Used - Like New",
-    footnote: "Saves 13kg CO2",
-    image: "img-card shoes"
-  }
-];
-
 export default function HomePage() {
   return (
     <div className="home">
@@ -93,20 +62,7 @@ export default function HomePage() {
               View All Marketplace &rarr;
             </a>
           </div>
-          <div className="listing-grid">
-            {listings.map((item) => (
-              <article className="listing-card" key={item.title}>
-                <div className={item.image} />
-                <div className="badge">{item.condition}</div>
-                <div className="listing-body">
-                  <h3>{item.title}</h3>
-                  <p>
-                    {item.price} - {item.footnote}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
+          <p>Listings are available in the marketplace.</p>
         </section>
 
         <section className="process" id="tracker">

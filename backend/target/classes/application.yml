@@ -1,0 +1,50 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/reusehub}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:Adarsh@.27}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+app:
+  allowed-email-domains: ${ALLOWED_EMAIL_DOMAINS:example.edu,gmail.edu}
+  auto-verify-email: ${AUTO_VERIFY_EMAIL:true}
+  jwt:
+    issuer: reusehub
+    secret: ${JWT_SECRET:change-me-in-prod-32-bytes-minimum-secret}
+    access-token-minutes: 60
+
+reusehub:
+  orders:
+    handoff-window: ${ORDER_HANDOFF_WINDOW:PT24H}
+    no-show-check-interval-ms: ${NO_SHOW_CHECK_INTERVAL_MS:60000}
+  disputes:
+    storage-dir: ${DISPUTE_EVIDENCE_DIR:dispute-evidence}
+
+mail:
+  host: ${SMTP_HOST:}
+  port: ${SMTP_PORT:587}
+  username: ${SMTP_USER:}
+  password: ${SMTP_PASSWORD:}
+  from: ${SMTP_FROM:no-reply@reusehub.local}
+
+# Allow larger file uploads for development (10MB max per file)

@@ -24,12 +24,3 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
-
-# Backend build output and runtime files
-backend/target/
-backend/uploads/
-backend/dispute-evidence/
-*.tsbuildinfo
-
-# Local session data
-cookiejar.txt

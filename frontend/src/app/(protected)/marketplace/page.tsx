@@ -32,62 +32,13 @@ type WishlistItemResponse = {
 
 const conditionOptions = ["New", "Good", "Fair"] as const;
 
-const demoImageBase = "/images";
-
-const fallbackListings: Listing[] = [
-  {
-    id: 1,
-    title: "MacBook Pro 14\"",
-    description: "14-inch MacBook Pro, lightly used and ready for classes.",
-    category: "ELECTRONICS",
-    condition: "LIKE_NEW",
-    listingType: "SELL",
-    price: "70550",
-    status: "ACTIVE",
-    imageUrls: [`${demoImageBase}/listing-macbook-pro-14.jpg`]
-  },
-  {
-    id: 2,
-    title: "Levi's Denim Jacket",
-    description: "Classic denim layer in great condition.",
-    category: "ACCESSORIES",
-    condition: "GOOD",
-    listingType: "SELL",
-    price: "2905",
-    status: "ACTIVE",
-    imageUrls: [`${demoImageBase}/listing-levis-denim-jacket.jpg`]
-  },
-  {
-    id: 3,
-    title: "Psychology Bundle",
-    description: "Core textbooks for psychology and research methods.",
-    category: "BOOKS",
-    condition: "FAIR",
-    listingType: "SELL",
-    price: "3320",
-    status: "ACTIVE",
-    imageUrls: [`${demoImageBase}/listing-psychology-bundle.jpg`]
-  },
-  {
-    id: 4,
-    title: "Nike Air Force 1",
-    description: "Clean pair with plenty of wear left.",
-    category: "ACCESSORIES",
-    condition: "LIKE_NEW",
-    listingType: "SELL",
-    price: "5395",
-    status: "ACTIVE",
-    imageUrls: [`${demoImageBase}/listing-nike-air-force-1.jpg`]
-  }
-];
-
 export default function MarketplacePage() {
   const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category");
   const { searchQuery, setSearchQuery } = useSearch();
-  const [listings, setListings] = useState<Listing[]>(fallbackListings);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initialCategory ? [initialCategory.toUpperCase()] : []
@@ -163,14 +114,13 @@ export default function MarketplacePage() {
     apiRequest<Listing[]>("/listings")
       .then((data) => {
         if (!mounted) return;
-        const nextListings = data.length > 0 ? data : fallbackListings;
-        setListings(nextListings);
-        const maxPrice = nextListings.reduce((acc, listing) => {
+        setListings(data);
+        const maxPrice = data.reduce((acc, listing) => {
           const numericPrice = Number(String(listing.price || "0").replace(/[^0-9.]/g, ""));
           if (Number.isNaN(numericPrice)) return acc;
           return Math.max(acc, numericPrice);
         }, 0);
-        setPriceMax(maxPrice || 0);
+        setPriceMax(maxPrice);
         setError(null);
       })
       .catch((err) => {
@@ -178,8 +128,8 @@ export default function MarketplacePage() {
         const message = err instanceof Error ? err.message : "Failed to load listings";
         setError(message);
         showToast(message, "error");
-        setListings(fallbackListings);
-        setPriceMax(500);
+        setListings([]);
+        setPriceMax(0);
       });
     return () => {
       mounted = false;
@@ -491,10 +441,14 @@ export default function MarketplacePage() {
           {filteredListings.length === 0 ? (
             <div style={{ textAlign: "center", padding: "48px 16px" }}>
               <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "var(--foreground, #333)" }}>
-                No listings found matching "{searchQuery}"
+                {listings.length === 0
+                  ? "No listings yet."
+                  : `No listings found matching "${searchQuery}"`}
               </p>
               <p style={{ color: "#666", marginTop: "8px" }}>
-                Try adjusting your search terms or clearing active filters.
+                {listings.length === 0
+                  ? "Be the first to add one to the marketplace."
+                  : "Try adjusting your search terms or clearing active filters."}
               </p>
               <button
                 type="button"
