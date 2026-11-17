@@ -4,6 +4,7 @@ import com.reusehub.common.ApiException;
 import com.reusehub.listing.Listing;
 import com.reusehub.listing.ListingRepository;
 import com.reusehub.listing.ListingStatus;
+import com.reusehub.listing.ListingType;
 import com.reusehub.listing.dto.ListingEventResponse;
 import com.reusehub.listing.dto.ListingResponse;
 import com.reusehub.order.dto.OrderCreateRequest;
@@ -16,6 +17,8 @@ import com.reusehub.order.dto.HandoffConfirmationRequest;
 import com.reusehub.order.CollateralStatus;
 import com.reusehub.user.UserRepository;
 import jakarta.transaction.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,6 +41,7 @@ public class OrderService {
   private final ListingRepository listingRepository;
   private final UserRepository userRepository;
   private final SimpMessagingTemplate messagingTemplate;
+  private final EntityManager entityManager;
 
   @Value("${reusehub.orders.handoff-window:PT24H}")
   private Duration handoffWindow = Duration.ofHours(24);
@@ -46,12 +50,14 @@ public class OrderService {
       OrderRepository orderRepository,
       ListingRepository listingRepository,
       UserRepository userRepository,
-      SimpMessagingTemplate messagingTemplate
+      SimpMessagingTemplate messagingTemplate,
+      EntityManager entityManager
   ) {
     this.orderRepository = orderRepository;
     this.listingRepository = listingRepository;
     this.userRepository = userRepository;
     this.messagingTemplate = messagingTemplate;
+    this.entityManager = entityManager;
   }
 
   public List<OrderResponse> listForUser(Long userId) {
@@ -70,11 +76,14 @@ public class OrderService {
 
   @Transactional
   public OrderResponse create(Long userId, OrderCreateRequest request) {
-    Listing listing = listingRepository.findById(request.listingId())
+    Listing listing = listingRepository.findByIdForUpdate(request.listingId())
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Listing not found"));
 
     if (listing.getUser().getId().equals(userId)) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "You cannot purchase or swap your own listing");
+    }
+    if (listing.getListingType() == ListingType.RENT) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Use the rental request workflow for rental listings");
     }
 
     // Conflict Prevention: Listing must be ACTIVE
@@ -144,6 +153,13 @@ public class OrderService {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Choose between 2 and 5 different listings for a bundle");
     }
 
+    List<Long> lockIds = new ArrayList<>(listingIds);
+    lockIds.sort(Long::compareTo);
+    for (Long listingId : lockIds) {
+      listingRepository.findByIdForUpdate(listingId)
+          .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Listing " + listingId + " not found"));
+    }
+
     List<Listing> listings = listingIds.stream()
         .map(id -> listingRepository.findById(id)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Listing " + id + " not found")))
@@ -154,6 +170,9 @@ public class OrderService {
     }
 
     for (Listing listing : listings) {
+      if (listing.getListingType() != ListingType.SELL) {
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Bundles can only contain listings available for sale");
+      }
       if (listing.getUser().getId().equals(userId)) {
         throw new ApiException(HttpStatus.BAD_REQUEST, "You cannot purchase your own listing");
       }
@@ -226,8 +245,16 @@ public class OrderService {
 
     // 1. DUAL-RESOURCE SWAP LOCK & CONFLICT PREVENTION ON ACCEPT
     if (targetStatus == OrderStatus.ACCEPTED) {
+      primaryListing = listingRepository.findByIdForUpdate(primaryListing.getId())
+          .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Listing not found"));
+      entityManager.refresh(order, LockModeType.PESSIMISTIC_WRITE);
+      previousStatus = order.getStatus();
       if (previousStatus != OrderStatus.REQUESTED) {
         throw new ApiException(HttpStatus.CONFLICT, "Only pending (REQUESTED) orders can be accepted");
+      }
+
+      if (primaryListing.getListingType() == ListingType.RENT) {
+        throw new ApiException(HttpStatus.CONFLICT, "Rental listings must be managed through the rental workflow");
       }
 
       // Validate primary listing availability
@@ -269,6 +296,9 @@ public class OrderService {
               HttpStatus.CONFLICT,
               "Conflict Prevention: Offered swap item '" + offeredListing.getTitle() + "' is currently " + offeredListing.getStatus()
           );
+        }
+        if (offeredListing.getListingType() == ListingType.RENT) {
+          throw new ApiException(HttpStatus.CONFLICT, "Rental listings cannot be offered in a swap");
         }
 
         // ATOMIC DUAL-RESOURCE LOCK: Both items transition to RESERVED
@@ -357,6 +387,16 @@ public class OrderService {
       OrderStatusUpdateRequest request
   ) {
     List<Order> bundle = orderRepository.findByBundleIdOrderByBundlePositionAsc(requestedOrder.getBundleId());
+    if (request.status() == OrderStatus.ACCEPTED) {
+      List<Long> listingIds = bundle.stream().map(item -> item.getListing().getId()).sorted().toList();
+      for (Long listingId : listingIds) {
+        listingRepository.findByIdForUpdate(listingId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Listing not found"));
+      }
+      for (Order item : bundle) {
+        entityManager.refresh(item, LockModeType.PESSIMISTIC_WRITE);
+      }
+    }
     if (bundle.size() != requestedOrder.getBundleSize()
         || bundle.stream().anyMatch(item -> item.getStatus() != requestedOrder.getStatus())) {
       throw new ApiException(HttpStatus.CONFLICT, "The bundle is incomplete or items have different statuses");
@@ -377,6 +417,9 @@ public class OrderService {
       List<BigDecimal> itemPrices = new ArrayList<>();
       for (Order item : bundle) {
         Listing listing = item.getListing();
+        if (listing.getListingType() != ListingType.SELL) {
+          throw new ApiException(HttpStatus.CONFLICT, "Bundle items must remain available for sale");
+        }
         if (listing.getStatus() != ListingStatus.ACTIVE) {
           throw new ApiException(HttpStatus.CONFLICT, "Bundle item '" + listing.getTitle() + "' is no longer available");
         }

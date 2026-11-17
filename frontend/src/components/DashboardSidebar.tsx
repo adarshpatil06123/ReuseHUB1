@@ -15,6 +15,7 @@ type OrderItem = {
 const navItems = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/listings", label: "My Listings" },
+  { href: "/dashboard/rentals", label: "Rentals" },
   { href: "/dashboard/orders", label: "Orders" },
   { href: "/marketplace/1/chat", label: "Messages" }
 ];

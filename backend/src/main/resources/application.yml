@@ -37,6 +37,11 @@ reusehub:
   orders:
     handoff-window: ${ORDER_HANDOFF_WINDOW:PT24H}
     no-show-check-interval-ms: ${NO_SHOW_CHECK_INTERVAL_MS:60000}
+  rentals:
+    request-expiry: ${RENTAL_REQUEST_EXPIRY:PT168H}
+    time-zone: ${RENTAL_TIME_ZONE:Asia/Kolkata}
+    maintenance-initial-delay-ms: ${RENTAL_MAINTENANCE_INITIAL_DELAY_MS:60000}
+    maintenance-interval-ms: ${RENTAL_MAINTENANCE_INTERVAL_MS:60000}
   disputes:
     storage-dir: ${DISPUTE_EVIDENCE_DIR:dispute-evidence}
 

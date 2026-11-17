@@ -19,6 +19,11 @@ type Listing = {
   price: string | null;
   status: string;
   imageUrls: string[];
+  location?: string;
+  rentalPricingPeriod?: string | null;
+  securityDeposit?: number | string | null;
+  rentalAvailableFrom?: string | null;
+  rentalAvailableUntil?: string | null;
 };
 
 type WishlistItemResponse = {
@@ -45,8 +50,11 @@ export default function MarketplacePage() {
   );
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   const [priceMax, setPriceMax] = useState(0);
-  const [location, setLocation] = useState("All Campuses");
-  const [sortBy, setSortBy] = useState("Newest First");
+  const [location, setLocation] = useState("All Locations");
+  const [listingMode, setListingMode] = useState(searchParams.get("type") === "RENT" ? "RENT" : "ALL");
+  const [availableFrom, setAvailableFrom] = useState("");
+  const [availableUntil, setAvailableUntil] = useState("");
+  const [sortBy, setSortBy] = useState("NEWEST");
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [wishlistBusyIds, setWishlistBusyIds] = useState<Set<number>>(new Set());
   const [visibleCount, setVisibleCount] = useState<number>(8);
@@ -100,6 +108,10 @@ export default function MarketplacePage() {
     if (cat) {
       setSelectedCategories([cat.toUpperCase()]);
     }
+  }, [searchParams]);
+
+  useEffect(() => {
+    setListingMode(searchParams.get("type") === "RENT" ? "RENT" : "ALL");
   }, [searchParams]);
 
   useEffect(() => {
@@ -193,6 +205,8 @@ export default function MarketplacePage() {
     const filtered = listings.filter((listing) => {
       const matchesCategory =
         selectedCategories.length === 0 || selectedCategories.includes(listing.category);
+      const matchesMode = listingMode === "ALL"
+        || (listingMode === "RENT" ? listing.listingType === "RENT" : listing.listingType === "SELL");
 
       const matchesCondition =
         selectedConditions.length === 0 ||
@@ -203,6 +217,14 @@ export default function MarketplacePage() {
       const numericPrice = Number(String(listing.price || "0").replace(/[^0-9.]/g, ""));
       const priceValue = Number.isNaN(numericPrice) ? 0 : numericPrice;
       const matchesPrice = priceValue <= priceMax;
+      const matchesLocation = location === "All Locations" || listing.location === location;
+      const requestedStart = availableFrom || availableUntil;
+      const requestedEnd = availableUntil || availableFrom;
+      const matchesAvailability = (!requestedStart && !requestedEnd) || (
+        listing.listingType === "RENT"
+        && (!listing.rentalAvailableFrom || listing.rentalAvailableFrom <= requestedStart)
+        && (!listing.rentalAvailableUntil || listing.rentalAvailableUntil >= requestedEnd)
+      );
 
       const trimmedQuery = searchQuery.trim().toLowerCase();
       const matchesSearch =
@@ -211,7 +233,8 @@ export default function MarketplacePage() {
         listing.description.toLowerCase().includes(trimmedQuery) ||
         listing.category.toLowerCase().includes(trimmedQuery);
 
-      return matchesCategory && matchesCondition && matchesPrice && matchesSearch;
+      return matchesMode && matchesCategory && matchesCondition && matchesPrice
+        && matchesLocation && matchesAvailability && matchesSearch;
     });
 
     const toPrice = (listing: Listing) => {
@@ -220,16 +243,17 @@ export default function MarketplacePage() {
     };
 
     const sorted = [...filtered];
-    if (sortBy === "Price: Low to High") {
+    if (sortBy === "LOW_TO_HIGH") {
       sorted.sort((a, b) => toPrice(a) - toPrice(b));
-    } else if (sortBy === "Price: High to Low") {
+    } else if (sortBy === "HIGH_TO_LOW") {
       sorted.sort((a, b) => toPrice(b) - toPrice(a));
-    } else if (sortBy === "Newest First") {
+    } else if (sortBy === "NEWEST") {
       sorted.sort((a, b) => b.id - a.id);
     }
 
     return sorted;
-  }, [listings, selectedCategories, selectedConditions, priceMax, sortBy, searchQuery]);
+  }, [listings, listingMode, selectedCategories, selectedConditions, priceMax, location,
+    availableFrom, availableUntil, sortBy, searchQuery]);
 
   const statsLabel = useMemo(() => {
     return `${filteredListings.length.toLocaleString()} pre-loved items looking for a new home.`;
@@ -247,12 +271,12 @@ export default function MarketplacePage() {
     );
   };
 
-  const formatPrice = (price: string | null, listingType: string) => {
+  const formatPrice = (price: string | number | null, listingType: string) => {
     if (listingType === "SWAP") return "Trade";
     if (listingType === "DONATE") return "Free";
     const numericPrice = Number(String(price || "0").replace(/[^0-9.]/g, ""));
     if (Number.isNaN(numericPrice)) return "₹0";
-    return `₹${numericPrice.toLocaleString()}`;
+    return `₹${numericPrice.toLocaleString()}${listingType === "RENT" ? " / day" : ""}`;
   };
 
   const toggleWishlist = async (listingId: number) => {
@@ -321,6 +345,28 @@ export default function MarketplacePage() {
     <div className="home">
       <main className="page marketplace">
         <aside className="filters">
+          <h3>Listing type</h3>
+          <div className="pill-row" role="group" aria-label="Filter by listing type">
+            {[
+              { value: "ALL", label: "All" },
+              { value: "SELL", label: "Buy/Sell" },
+              { value: "RENT", label: "Rent" }
+            ].map((mode) => (
+              <button
+                key={mode.value}
+                type="button"
+                className={`pill-btn ${listingMode === mode.value ? "active" : ""}`}
+                onClick={() => {
+                  setListingMode(mode.value);
+                  if (mode.value === "RENT") router.replace("/marketplace?type=RENT");
+                  else if (searchParams.has("type")) router.replace("/marketplace");
+                }}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+
           <h3>Category</h3>
           <label>
             <input
@@ -370,10 +416,23 @@ export default function MarketplacePage() {
 
           <h3>Location</h3>
           <select value={location} onChange={(event) => setLocation(event.target.value)}>
-            <option>North Campus</option>
-            <option>South Campus</option>
-            <option>East Campus</option>
+            <option>All Locations</option>
+            {[...new Set(listings.map((listing) => listing.location).filter((value): value is string => Boolean(value)))]
+              .sort()
+              .map((value) => <option key={value}>{value}</option>)}
           </select>
+
+          <h3>Rental dates</h3>
+          <label>
+            Start
+            <input type="date" value={availableFrom} min={new Date().toLocaleDateString("en-CA")}
+              onChange={(event) => setAvailableFrom(event.target.value)} />
+          </label>
+          <label>
+            End
+            <input type="date" value={availableUntil} min={availableFrom || new Date().toLocaleDateString("en-CA")}
+              onChange={(event) => setAvailableUntil(event.target.value)} />
+          </label>
 
           <div className="impact-card">
             <h4>Impact Stats</h4>
@@ -394,9 +453,9 @@ export default function MarketplacePage() {
             <div className="sort">
               <span>Sort by:</span>
               <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-                <option>Newest First</option>
-                <option>Price: Low to High</option>
-                <option>Price: High to Low</option>
+                <option value="NEWEST">Newest First</option>
+                <option value="LOW_TO_HIGH">{listingMode === "RENT" ? "Rate: Low to High" : "Price: Low to High"}</option>
+                <option value="HIGH_TO_LOW">{listingMode === "RENT" ? "Rate: High to Low" : "Price: High to Low"}</option>
               </select>
               <button
                 className="btn ghost"

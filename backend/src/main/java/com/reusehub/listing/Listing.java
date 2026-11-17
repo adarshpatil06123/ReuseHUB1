@@ -18,6 +18,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,6 +50,22 @@ public class Listing {
   private ListingType listingType;
 
   private BigDecimal price;
+
+  @Enumerated(EnumType.STRING)
+  private RentalPricingPeriod rentalPricingPeriod;
+
+  private BigDecimal securityDeposit;
+
+  private LocalDate rentalAvailableFrom;
+
+  private LocalDate rentalAvailableUntil;
+
+  private Integer minimumRentalDays;
+
+  private Integer maximumRentalDays;
+
+  @Column(length = 1000)
+  private String rentalInstructions;
 
   private String location = "North Campus";
 
@@ -154,6 +171,62 @@ public class Listing {
 
   public void setPrice(BigDecimal price) {
     this.price = price;
+  }
+
+  public RentalPricingPeriod getRentalPricingPeriod() {
+    return rentalPricingPeriod;
+  }
+
+  public void setRentalPricingPeriod(RentalPricingPeriod rentalPricingPeriod) {
+    this.rentalPricingPeriod = rentalPricingPeriod;
+  }
+
+  public BigDecimal getSecurityDeposit() {
+    return securityDeposit;
+  }
+
+  public void setSecurityDeposit(BigDecimal securityDeposit) {
+    this.securityDeposit = securityDeposit;
+  }
+
+  public LocalDate getRentalAvailableFrom() {
+    return rentalAvailableFrom;
+  }
+
+  public void setRentalAvailableFrom(LocalDate rentalAvailableFrom) {
+    this.rentalAvailableFrom = rentalAvailableFrom;
+  }
+
+  public LocalDate getRentalAvailableUntil() {
+    return rentalAvailableUntil;
+  }
+
+  public void setRentalAvailableUntil(LocalDate rentalAvailableUntil) {
+    this.rentalAvailableUntil = rentalAvailableUntil;
+  }
+
+  public Integer getMinimumRentalDays() {
+    return minimumRentalDays;
+  }
+
+  public void setMinimumRentalDays(Integer minimumRentalDays) {
+    this.minimumRentalDays = minimumRentalDays;
+  }
+
+  public Integer getMaximumRentalDays() {
+    return maximumRentalDays;
+  }
+
+  public void setMaximumRentalDays(Integer maximumRentalDays) {
+    this.maximumRentalDays = maximumRentalDays;
+  }
+
+  public String getRentalInstructions() {
+    return rentalInstructions;
+  }
+
+  public void setRentalInstructions(String rentalInstructions) {
+    this.rentalInstructions = rentalInstructions;
   }
 
   public String getLocation() {

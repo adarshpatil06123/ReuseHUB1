@@ -14,6 +14,7 @@ type ListingItem = {
   condition: string;
   category: string;
   imageUrls: string[];
+  listingType: string;
 };
 
 type DemandZone = {
@@ -56,6 +57,7 @@ export default function HomePage() {
   const router = useRouter();
   const { searchQuery, setSearchQuery } = useSearch();
   const [recentListings, setRecentListings] = useState<ListingItem[]>([]);
+  const [recentRentals, setRecentRentals] = useState<ListingItem[]>([]);
   const [demandZones, setDemandZones] = useState<DemandZone[]>([]);
   const [publicNeedRequests, setPublicNeedRequests] = useState<PublicNeedRequest[]>([]);
   const [demandLoading, setDemandLoading] = useState(true);
@@ -75,6 +77,9 @@ export default function HomePage() {
       .catch(() => {
         // Keeps graceful defaults if offline
       });
+    apiRequest<ListingItem[]>("/listings?type=RENT")
+      .then((data) => setRecentRentals(data.slice(0, 4)))
+      .catch(() => setRecentRentals([]));
   }, []);
 
   useEffect(() => {
@@ -193,6 +198,9 @@ export default function HomePage() {
               <Link className="btn ghost" href="/marketplace/add">
                 Sell an Item
               </Link>
+              <Link className="btn ghost" href="/marketplace?type=RENT">
+                Rent an Item
+              </Link>
             </div>
           </div>
 
@@ -204,6 +212,50 @@ export default function HomePage() {
               <div className="img-card desk" />
             </div>
           </div>
+        </section>
+
+        <section className="listings" aria-label="Recently added rental listings">
+          <div className="section-head">
+            <div>
+              <span className="section-kicker">Borrow what you need</span>
+              <h2>Recently added rentals</h2>
+            </div>
+            <Link className="link" href="/marketplace?type=RENT">
+              Browse rentals &rarr;
+            </Link>
+          </div>
+          {recentRentals.length === 0 ? (
+            <p>No rental listings yet. Share an item with your campus community.</p>
+          ) : (
+            <div className="listing-grid">
+              {recentRentals.map((item) => {
+                const cover = item.imageUrls?.[0];
+                return (
+                  <Link key={item.id} href={`/marketplace/${item.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                    <article className="listing-card" style={{ borderRadius: "14px" }}>
+                      <div
+                        className="listing-image-box"
+                        style={{
+                          height: "110px",
+                          background: cover ? `url(${cover}) center/cover no-repeat` : "#f3f4f6",
+                          borderRadius: "14px 14px 0 0"
+                        }}
+                      />
+                      <div className="badge" style={{ top: "8px", left: "8px", fontSize: "9px", padding: "2px 6px" }}>
+                        RENT
+                      </div>
+                      <div className="listing-body" style={{ padding: "8px 12px 10px" }}>
+                        <h3 style={{ fontSize: "13px", margin: "0 0 2px", fontWeight: 600 }}>{item.title}</h3>
+                        <p style={{ fontSize: "11px" }}>
+                          ₹{Number(item.price || 0).toLocaleString("en-IN")} / day · {item.category}
+                        </p>
+                      </div>
+                    </article>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* LIVE DATABASE CAMPUS FAVORITES */}
@@ -239,11 +291,14 @@ export default function HomePage() {
                         }}
                       />
                       <div className="badge" style={{ top: "8px", left: "8px", fontSize: "9px", padding: "2px 6px" }}>
-                        {item.condition.replace("_", " ")}
+                        {item.listingType === "RENT" ? "RENT" : item.condition.replace("_", " ")}
                       </div>
                       <div className="listing-body" style={{ padding: "8px 12px 10px" }}>
                         <h3 style={{ fontSize: "13px", margin: "0 0 2px", fontWeight: 600 }}>{item.title}</h3>
-                        <p style={{ fontSize: "11px" }}>₹{Number(item.price || 0).toLocaleString()} • {item.category}</p>
+                        <p style={{ fontSize: "11px" }}>
+                          ₹{Number(item.price || 0).toLocaleString()}
+                          {item.listingType === "RENT" ? " / day" : ""} • {item.category}
+                        </p>
                       </div>
                     </article>
                   </Link>

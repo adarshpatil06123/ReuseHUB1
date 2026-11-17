@@ -16,6 +16,14 @@ type ListingDetail = {
   price: string | number | null;
   status: string;
   imageUrls: string[];
+  location?: string;
+  rentalPricingPeriod?: string | null;
+  securityDeposit?: number | string | null;
+  rentalAvailableFrom?: string | null;
+  rentalAvailableUntil?: string | null;
+  minimumRentalDays?: number | null;
+  maximumRentalDays?: number | null;
+  rentalInstructions?: string | null;
   createdAt?: string;
 };
 
@@ -85,6 +93,12 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
   const [error, setError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [isRentalModalOpen, setIsRentalModalOpen] = useState(false);
+  const [rentalStartDate, setRentalStartDate] = useState("");
+  const [rentalEndDate, setRentalEndDate] = useState("");
+  const [rentalMessage, setRentalMessage] = useState("");
+  const [rentalConfirmed, setRentalConfirmed] = useState(false);
+  const [isSubmittingRental, setIsSubmittingRental] = useState(false);
 
   // Reviews state (saved per listing)
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -317,8 +331,48 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     }
   };
 
+  const rentalDays = rentalStartDate && rentalEndDate
+    ? Math.max(0, Math.floor(
+        (new Date(`${rentalEndDate}T00:00:00`).getTime()
+          - new Date(`${rentalStartDate}T00:00:00`).getTime()) / 86_400_000
+      ) + 1)
+    : 0;
+  const dailyRate = Number(detail?.price || 0);
+  const rentalBaseAmount = rentalDays * dailyRate;
+  const depositAmount = Number(detail?.securityDeposit || 0);
+
+  const handleCreateRental = async () => {
+    if (!detail || rentalDays < 1 || !rentalConfirmed || isSubmittingRental) return;
+    setIsSubmittingRental(true);
+    setError(null);
+    setActionSuccess(null);
+    try {
+      await apiRequest(`/rentals`, {
+        method: "POST",
+        body: JSON.stringify({
+          listingId: detail.id,
+          startDate: rentalStartDate,
+          endDate: rentalEndDate,
+          message: rentalMessage.trim() || null
+        })
+      });
+      setIsRentalModalOpen(false);
+      setRentalConfirmed(false);
+      setRentalMessage("");
+      setActionSuccess("Rental request sent. No payment or deposit was processed.");
+      showToast("Rental request sent to the owner.", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to submit rental request.";
+      setError(message);
+      showToast(message, "error");
+    } finally {
+      setIsSubmittingRental(false);
+    }
+  };
+
   const priceLabel = useMemo(() => {
     if (!detail) return "";
+    if (detail.listingType === "RENT") return `₹${Number(detail.price || 0).toLocaleString("en-IN")} / day`;
     if (detail.listingType === "SWAP") return "Available for Swap";
     if (detail.listingType === "DONATE") return "Free (Donation)";
     const num = Number(detail.price);
@@ -453,14 +507,28 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                 </ul>
               </div>
               <div className="panel">
-                <h4>Pricing & Verified Hub</h4>
+                <h4>{detail.listingType === "RENT" ? "Rental terms" : "Pricing & Verified Hub"}</h4>
                 <ul>
                   <li><strong>Price:</strong> {priceLabel}</li>
+                  {detail.listingType === "RENT" ? (
+                    <>
+                      <li><strong>Security deposit:</strong> {depositAmount > 0 ? `₹${depositAmount.toLocaleString("en-IN")} (refundable estimate)` : "None specified"}</li>
+                      <li><strong>Available:</strong> {detail.rentalAvailableFrom || "Now"} to {detail.rentalAvailableUntil || "No end date set"}</li>
+                      <li><strong>Duration:</strong> {detail.minimumRentalDays ? `At least ${detail.minimumRentalDays} day(s)` : "No minimum"}{detail.maximumRentalDays ? ` · Up to ${detail.maximumRentalDays} day(s)` : ""}</li>
+                      <li><strong>Location:</strong> {detail.location || "Campus handover"}</li>
+                    </>
+                  ) : null}
                   <li><strong>Photos:</strong> {galleryImages.length || 1} available</li>
                   <li><strong>Protection:</strong> Verified Campus Handoff</li>
                 </ul>
               </div>
             </div>
+            {detail.listingType === "RENT" && detail.rentalInstructions ? (
+              <div className="panel" style={{ marginTop: "16px" }}>
+                <h4>Rental instructions and conditions</h4>
+                <p>{detail.rentalInstructions}</p>
+              </div>
+            ) : null}
 
             {/* Reviews Section */}
             <section style={{ marginTop: "36px" }}>
@@ -600,7 +668,9 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                 <span className="price">{priceLabel}</span>
               </div>
               <p className="availability">
-                {detail.listingType === "SWAP"
+                {detail.listingType === "RENT"
+                  ? `Temporary campus rental · ${priceLabel}`
+                  : detail.listingType === "SWAP"
                   ? "Open to campus exchange proposals"
                   : detail.listingType === "DONATE"
                   ? "Free donation item for campus members"
@@ -623,14 +693,25 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                     Listing {detail.status}
                   </div>
                   <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>
-                    This item has been successfully completed and is no longer available.
+                    {detail.status === "INACTIVE"
+                      ? "The owner has temporarily made this item unavailable."
+                      : "This item has been completed and is no longer available."}
                   </p>
                 </div>
               )}
 
               {!isOwner ? (
                 <>
-                  {detail.listingType !== "SWAP" && (
+                  {detail.listingType === "RENT" ? (
+                    <button
+                      className="btn primary full"
+                      onClick={() => setIsRentalModalOpen(true)}
+                      disabled={detail.status !== "ACTIVE"}
+                    >
+                      {detail.status === "ACTIVE" ? "Request to Rent" : "Unavailable"}
+                    </button>
+                  ) : null}
+                  {detail.listingType !== "SWAP" && detail.listingType !== "RENT" && (
                     <button
                       className="btn primary full"
                       onClick={() => setOrderModalType("BUY")}
@@ -722,8 +803,8 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
 
             <div className="location-card">
               <strong>Location & Hand-off</strong>
-              <p>{seller?.location || "University Campus (Local Exchange)"}</p>
-              <span>Verified direct hand-off within 24-48 hours</span>
+              <p>{detail.location || seller?.location || "University Campus (Local Exchange)"}</p>
+              <span>{detail.listingType === "RENT" ? "Confirm the handover in your rental dashboard." : "Verified direct hand-off within 24-48 hours"}</span>
             </div>
           </aside>
         </section>
@@ -970,6 +1051,63 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
             </div>
           )}
         </section>
+        {isRentalModalOpen ? (
+          <div
+            role="presentation"
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "grid",
+              placeItems: "center", zIndex: 1000, padding: "16px"
+            }}
+            onClick={() => setIsRentalModalOpen(false)}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="rental-request-title"
+              style={{ background: "#fff", borderRadius: "18px", width: "100%", maxWidth: "520px", padding: "24px" }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 id="rental-request-title" style={{ marginTop: 0 }}>Request to rent {detail.title}</h2>
+              <p>Choose your dates. Requests use the listing rate of {priceLabel}; the owner must approve before the rental is confirmed.</p>
+              <div className="field-split">
+                <div className="field-row">
+                  <label htmlFor="rental-start-date">Start date</label>
+                  <input id="rental-start-date" type="date" required min={new Date().toLocaleDateString("en-CA")}
+                    value={rentalStartDate} onChange={(event) => { setRentalStartDate(event.target.value); setRentalConfirmed(false); }} />
+                </div>
+                <div className="field-row">
+                  <label htmlFor="rental-end-date">End date (inclusive)</label>
+                  <input id="rental-end-date" type="date" required min={rentalStartDate || new Date().toLocaleDateString("en-CA")}
+                    value={rentalEndDate} onChange={(event) => { setRentalEndDate(event.target.value); setRentalConfirmed(false); }} />
+                </div>
+              </div>
+              <div className="field-row">
+                <label htmlFor="rental-request-message">Message to owner (optional)</label>
+                <textarea id="rental-request-message" maxLength={1000} value={rentalMessage}
+                  onChange={(event) => setRentalMessage(event.target.value)} />
+              </div>
+              <div style={{ background: "#f7f9f7", borderRadius: "12px", padding: "14px", margin: "14px 0" }}>
+                <strong>Estimated breakdown</strong>
+                <div>{rentalDays} day(s) × ₹{dailyRate.toLocaleString("en-IN")} = ₹{rentalBaseAmount.toLocaleString("en-IN")}</div>
+                <div>Refundable security deposit estimate: ₹{depositAmount.toLocaleString("en-IN")}</div>
+                <strong>Estimated total: ₹{(rentalBaseAmount + depositAmount).toLocaleString("en-IN")}</strong>
+                <p style={{ marginBottom: 0, fontSize: "12px" }}>This is an estimate only. ReuseHub does not process payments or deposits.</p>
+              </div>
+              <label style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "16px" }}>
+                <input type="checkbox" checked={rentalConfirmed}
+                  onChange={(event) => setRentalConfirmed(event.target.checked)} />
+                <span>I confirm these dates and understand this request does not make a payment.</span>
+              </label>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                <button className="btn ghost" type="button" onClick={() => setIsRentalModalOpen(false)}>Cancel</button>
+                <button className="btn primary" type="button" onClick={handleCreateRental}
+                  disabled={!rentalStartDate || !rentalEndDate || rentalDays < 1 || !rentalConfirmed || isSubmittingRental}>
+                  {isSubmittingRental ? "Sending..." : "Confirm & Send Request"}
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </main>
 
       <footer className="footer">

@@ -68,6 +68,7 @@ E:\ReuseHub\backend\src\main\java\com\reusehub\listing\ListingService.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\listing\ListingSpecifications.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\listing\ListingStatus.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\listing\ListingType.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\listing\RentalPricingPeriod.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\maintenance\MarketplaceMaintenanceController.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\maintenance\MarketplaceMaintenanceService.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\need\dto\NeedMatchNotificationDto.java
@@ -94,6 +95,19 @@ E:\ReuseHub\backend\src\main\java\com\reusehub\order\OrderRepository.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\order\OrderService.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\order\OrderStatus.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\order\OrderType.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\dto\RentalCreateRequest.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\dto\RentalDisputeRequest.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\dto\RentalHistoryResponse.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\dto\RentalNotificationDto.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\dto\RentalPageResponse.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\dto\RentalResponse.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\dto\RentalStatusUpdateRequest.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\RentalController.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\RentalRepository.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\RentalRequest.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\RentalService.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\RentalStatus.java
+E:\ReuseHub\backend\src\main\java\com\reusehub\rental\RentalStatusHistory.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\ReuseHubApplication.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\review\dto\ReviewCreateRequest.java
 E:\ReuseHub\backend\src\main\java\com\reusehub\review\dto\ReviewResponse.java

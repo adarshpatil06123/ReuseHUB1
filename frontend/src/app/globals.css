@@ -4593,6 +4593,117 @@ a {
   color: #246b3d;
 }
 
+.rental-listing-fields {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.rental-listing-fields input,
+.rental-listing-fields textarea,
+.rental-dispute-form textarea {
+  width: 100%;
+}
+
+.rental-status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #edf2ef;
+  color: #43544a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rental-status-pending,
+.rental-status-return_requested {
+  background: #fff3d8;
+  color: #8a5b00;
+}
+
+.rental-status-approved,
+.rental-status-ready_for_handover,
+.rental-status-active {
+  background: #e4f5e9;
+  color: #22623c;
+}
+
+.rental-status-rejected,
+.rental-status-cancelled,
+.rental-status-expired,
+.rental-status-disputed {
+  background: #fce8e7;
+  color: #963b35;
+}
+
+.rental-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.rental-summary-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.rental-summary-grid span,
+.rental-timeline time {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.rental-summary-grid strong {
+  overflow-wrap: anywhere;
+}
+
+.rental-timeline {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.rental-timeline summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.rental-timeline li {
+  margin: 10px 0;
+}
+
+.rental-timeline li p {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+.rental-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.rental-dispute-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .rental-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rental-dashboard-card {
+    padding: 14px;
+  }
+}
+
 .need-condition-options button span {
   color: #287c42;
   font-weight: 700;

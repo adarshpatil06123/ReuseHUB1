@@ -5,8 +5,10 @@ import com.reusehub.listing.ListingCategory;
 import com.reusehub.listing.ListingStatus;
 import com.reusehub.listing.ListingType;
 import com.reusehub.listing.ItemCondition;
+import com.reusehub.listing.RentalPricingPeriod;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 public record ListingResponse(
@@ -21,7 +23,14 @@ public record ListingResponse(
     String location,
     ListingStatus status,
     List<String> imageUrls,
-    Instant createdAt
+    Instant createdAt,
+    RentalPricingPeriod rentalPricingPeriod,
+    BigDecimal securityDeposit,
+    LocalDate rentalAvailableFrom,
+    LocalDate rentalAvailableUntil,
+    Integer minimumRentalDays,
+    Integer maximumRentalDays,
+    String rentalInstructions
 ) {
   public static ListingResponse from(Listing listing) {
     return new ListingResponse(
@@ -36,7 +45,14 @@ public record ListingResponse(
         listing.getLocation() != null ? listing.getLocation() : "North Campus",
         listing.getStatus(),
         listing.getImages().stream().map(img -> img.getImageUrl()).toList(),
-        listing.getCreatedAt()
+        listing.getCreatedAt(),
+        listing.getRentalPricingPeriod(),
+        listing.getSecurityDeposit(),
+        listing.getRentalAvailableFrom(),
+        listing.getRentalAvailableUntil(),
+        listing.getMinimumRentalDays(),
+        listing.getMaximumRentalDays(),
+        listing.getRentalInstructions()
     );
   }
 }

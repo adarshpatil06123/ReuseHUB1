@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useNotifications } from "@/context/NotificationContext";
 import { useSearch } from "@/context/SearchContext";
@@ -25,6 +25,7 @@ const isActivePath = (pathname: string, href: string) => {
 export default function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { searchQuery, setSearchQuery } = useSearch();
   const { currentUser, unreadCount, notifications, markAsRead, clearNotifications } = useNotifications();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -54,7 +55,7 @@ export default function AppHeader() {
             onChange={(e) => {
               setSearchQuery(e.target.value);
               if (pathname !== "/marketplace") {
-                router.push("/marketplace");
+                router.push(searchParams.get("type") === "RENT" ? "/marketplace?type=RENT" : "/marketplace");
               }
             }}
           />
@@ -106,8 +107,10 @@ export default function AppHeader() {
                   notifications.map((notif) => (
                     <Link
                       key={notif.notificationId}
-                      href={notif.notificationType === "ORDER"
-                        ? "/dashboard/orders"
+                      href={notif.notificationType === "RENTAL"
+                        ? "/dashboard/rentals"
+                        : notif.notificationType === "ORDER"
+                          ? "/dashboard/orders"
                         : notif.notificationType === "CHAT"
                           ? notif.listingId === 0
                             ? `/marketplace/0/chat?userId=${notif.senderId}`
@@ -126,6 +129,8 @@ export default function AppHeader() {
                           {"actorName" in notif ? notif.actorName : notif.senderName}
                           {notif.notificationType === "ORDER"
                             ? " · Order update"
+                            : notif.notificationType === "RENTAL"
+                              ? " · Rental update"
                             : notif.notificationType === "NEED_MATCH"
                               ? " · Need match"
                               : notif.notificationType === "RELISTING"
@@ -134,7 +139,7 @@ export default function AppHeader() {
                         </strong>
                         <p>{notif.content}</p>
                         <span className="notif-meta">
-                          {notif.notificationType === "ORDER" ? "Order: " : "Re: "}
+                          {notif.notificationType === "ORDER" ? "Order: " : notif.notificationType === "RENTAL" ? "Rental: " : "Re: "}
                           {notif.listingTitle}
                         </span>
                       </div>

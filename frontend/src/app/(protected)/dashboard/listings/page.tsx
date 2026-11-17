@@ -22,6 +22,13 @@ type ListingResponse = {
   status: string;
   imageUrls: string[];
   createdAt: string;
+  rentalPricingPeriod?: string | null;
+  securityDeposit?: number | string | null;
+  rentalAvailableFrom?: string | null;
+  rentalAvailableUntil?: string | null;
+  minimumRentalDays?: number | null;
+  maximumRentalDays?: number | null;
+  rentalInstructions?: string | null;
 };
 
 type ListingEvent = {
@@ -48,7 +55,7 @@ const tabs = ["All Items", "Active", "Pending", "Sold"] as const;
 
 type TabKey = (typeof tabs)[number];
 
-const statusOptions = ["ACTIVE", "RESERVED", "SOLD", "SWAPPED", "DONATED"] as const;
+const statusOptions = ["ACTIVE", "INACTIVE", "RESERVED", "SOLD", "SWAPPED", "DONATED"] as const;
 
 const sortOptions = [
   { value: "NEWEST", label: "Newest" },
@@ -237,10 +244,17 @@ export default function ListingsPage() {
         category: listing.category,
         condition: listing.condition,
         listingType: listing.listingType,
-        price: listing.listingType === "SELL"
+        price: listing.listingType === "SELL" || listing.listingType === "RENT"
           ? Number(editPrice || listing.price || 0)
           : null,
-        imageUrls: listing.imageUrls
+        imageUrls: listing.imageUrls,
+        rentalPricingPeriod: listing.rentalPricingPeriod,
+        securityDeposit: listing.securityDeposit,
+        rentalAvailableFrom: listing.rentalAvailableFrom,
+        rentalAvailableUntil: listing.rentalAvailableUntil,
+        minimumRentalDays: listing.minimumRentalDays,
+        maximumRentalDays: listing.maximumRentalDays,
+        rentalInstructions: listing.rentalInstructions
       };
       const updated = await apiRequest<ListingResponse>(`/listings/${listing.id}`, {
         method: "PUT",
@@ -487,7 +501,7 @@ export default function ListingsPage() {
                   {editingId === listing.id ? (
                     <div className="edit-panel">
                       <div style={{ padding: "8px 10px", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "8px", fontSize: "11px", color: "#92400e", marginBottom: "8px" }}>
-                        ⚠️ <strong>Auto-Invalidation Active:</strong> Modifying price or details will automatically invalidate open buyer requests to prevent transaction disputes.
+                        ⚠️ <strong>Terms update:</strong> Price changes invalidate pending requests; approved rentals keep their agreed price snapshot.
                       </div>
                       <input
                         value={editTitle}
@@ -499,16 +513,18 @@ export default function ListingsPage() {
                         onChange={(event) => setEditDescription(event.target.value)}
                         placeholder="Description"
                       />
-                      {listing.listingType === "SELL" ? (
+                      {listing.listingType === "SELL" || listing.listingType === "RENT" ? (
                         <div className="price-input compact">
                           <span>₹</span>
                           <input
                             type="number"
-                            min="0"
-                            step="1"
+                            min={listing.listingType === "RENT" ? "0.01" : "0"}
+                            step={listing.listingType === "RENT" ? "0.01" : "1"}
                             value={editPrice}
                             onChange={(event) => setEditPrice(event.target.value)}
+                            aria-label={listing.listingType === "RENT" ? "Rental price per day" : "Listing price"}
                           />
+                          {listing.listingType === "RENT" ? <span>/ day</span> : null}
                         </div>
                       ) : null}
                       <div className="edit-actions">
@@ -526,17 +542,21 @@ export default function ListingsPage() {
                         <button className="btn ghost" onClick={() => startEdit(listing)}>
                           Edit
                         </button>
-                        <select
-                          className="status-select"
-                          value={listing.status}
-                          onChange={(event) => updateStatus(listing, event.target.value)}
-                        >
-                          {statusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
+                        {listing.listingType === "RENT" ? (
+                          <span className="status-pill active">RENT · availability managed by dates</span>
+                        ) : (
+                          <select
+                            className="status-select"
+                            value={listing.status}
+                            onChange={(event) => updateStatus(listing, event.target.value)}
+                          >
+                            {statusOptions.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                         <button
                           className="btn ghost"
                           style={{

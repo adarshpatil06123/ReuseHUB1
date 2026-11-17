@@ -13,6 +13,13 @@ type ListingPayload = {
   price: number | null;
   location: string;
   imageUrls: string[];
+  rentalPricingPeriod?: "PER_DAY";
+  securityDeposit?: number | null;
+  rentalAvailableFrom?: string | null;
+  rentalAvailableUntil?: string | null;
+  minimumRentalDays?: number | null;
+  maximumRentalDays?: number | null;
+  rentalInstructions?: string | null;
 };
 
 const categoryOptions = [
@@ -52,6 +59,12 @@ export default function AddItemPage() {
   const [imageError, setImageError] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const [location, setLocation] = useState("Main Library Plaza");
+  const [securityDeposit, setSecurityDeposit] = useState("");
+  const [rentalAvailableFrom, setRentalAvailableFrom] = useState("");
+  const [rentalAvailableUntil, setRentalAvailableUntil] = useState("");
+  const [minimumRentalDays, setMinimumRentalDays] = useState("");
+  const [maximumRentalDays, setMaximumRentalDays] = useState("");
+  const [rentalInstructions, setRentalInstructions] = useState("");
   const [pickup, setPickup] = useState(pickupOptions[0]);
   const [openToOffers, setOpenToOffers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -80,6 +93,12 @@ export default function AddItemPage() {
 
   const toggleType = (type: string) => {
     setSelectedTypes((prev) => {
+      if (type === "RENT") {
+        return prev.includes("RENT") ? ["SELL"] : ["RENT"];
+      }
+      if (prev.includes("RENT")) {
+        return ["SELL", type];
+      }
       if (prev.includes(type)) {
         if (prev.length === 1) return prev; // keep at least one selected
         return prev.filter((t) => t !== type);
@@ -203,19 +222,48 @@ export default function AddItemPage() {
   };
 
   const handleSubmit = async () => {
+    const isRentSelected = selectedTypes.includes("RENT");
+    const numericPrice = Number(price);
+    const numericDeposit = securityDeposit.trim() ? Number(securityDeposit) : null;
+    const minDays = minimumRentalDays.trim() ? Number(minimumRentalDays) : null;
+    const maxDays = maximumRentalDays.trim() ? Number(maximumRentalDays) : null;
+    if (!title.trim() || !description.trim()) {
+      setError("Enter an item name and description.");
+      return;
+    }
+    if (isRentSelected && (!Number.isFinite(numericPrice) || numericPrice <= 0)) {
+      setError("Rental price per day must be greater than zero.");
+      return;
+    }
+    if (isRentSelected && numericDeposit !== null && (!Number.isFinite(numericDeposit) || numericDeposit < 0)) {
+      setError("Security deposit cannot be negative.");
+      return;
+    }
+    if (isRentSelected && rentalAvailableFrom && rentalAvailableUntil && rentalAvailableUntil < rentalAvailableFrom) {
+      setError("Availability end date cannot be before its start date.");
+      return;
+    }
+    if (isRentSelected && ((minDays !== null && (!Number.isInteger(minDays) || minDays < 1))
+      || (maxDays !== null && (!Number.isInteger(maxDays) || maxDays < 1))
+      || (minDays !== null && maxDays !== null && minDays > maxDays))) {
+      setError("Rental duration limits must be positive whole days, with minimum no greater than maximum.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setSuccess(null);
 
     try {
       const isSellSelected = selectedTypes.includes("SELL");
-      const primaryType = isSellSelected
+      const primaryType = isRentSelected
+        ? "RENT"
+        : isSellSelected
         ? "SELL"
         : selectedTypes.includes("SWAP")
         ? "SWAP"
         : "DONATE";
 
-      const numericPrice = isSellSelected ? Number(price || 0) : null;
+      const listingPrice = isSellSelected || isRentSelected ? Number(price || 0) : null;
       const typeNote =
         selectedTypes.length > 1
           ? `\n\n[Available for: ${selectedTypes.map((t) => (t === "SELL" ? "Sale" : t === "SWAP" ? "Swap" : "Free Donation")).join(", ")}]`
@@ -227,9 +275,18 @@ export default function AddItemPage() {
         category,
         condition,
         listingType: primaryType,
-        price: numericPrice,
+        price: listingPrice,
         location,
-        imageUrls: imageUrls.filter((url) => !url.startsWith("data:"))
+        imageUrls: imageUrls.filter((url) => !url.startsWith("data:")),
+        ...(isRentSelected ? {
+          rentalPricingPeriod: "PER_DAY",
+          securityDeposit: numericDeposit,
+          rentalAvailableFrom: rentalAvailableFrom || null,
+          rentalAvailableUntil: rentalAvailableUntil || null,
+          minimumRentalDays: minDays,
+          maximumRentalDays: maxDays,
+          rentalInstructions: rentalInstructions.trim() || null
+        } : {})
       };
 
       await apiRequest("/listings", {
@@ -242,6 +299,12 @@ export default function AddItemPage() {
       setTitle("");
       setDescription("");
       setPrice("0");
+      setSecurityDeposit("");
+      setRentalAvailableFrom("");
+      setRentalAvailableUntil("");
+      setMinimumRentalDays("");
+      setMaximumRentalDays("");
+      setRentalInstructions("");
       setImageUrls([]);
       setImageUrl("");
       localStorage.removeItem("reusehub.addItem.images");
@@ -261,8 +324,8 @@ export default function AddItemPage() {
           <span className="section-kicker">Circularity Hub</span>
           <h1>Add New Item</h1>
           <p>
-            Give your pre-loved belongings a second life. List your items for
-            sell, swap, or donation and earn impact points.
+            Give your pre-loved belongings a second life. Sell, swap, donate,
+            or rent an item to another campus member.
           </p>
         </section>
 
@@ -384,19 +447,21 @@ export default function AddItemPage() {
                 </div>
               </div>
               <div className="type-grid">
-                {["SELL", "SWAP", "DONATE"].map((type) => (
+                {["SELL", "SWAP", "DONATE", "RENT"].map((type) => (
                   <button
                     key={type}
                     type="button"
                     className={`type-card ${selectedTypes.includes(type) ? "active" : ""}`}
                     onClick={() => toggleType(type)}
                   >
-                    <strong>{type === "SELL" ? "Sell" : type === "SWAP" ? "Swap" : "Donate"}</strong>
+                    <strong>{type === "SELL" ? "Sell" : type === "SWAP" ? "Swap" : type === "RENT" ? "Rent" : "Donate"}</strong>
                     <span>
                       {type === "SELL"
                         ? "Set a fixed price"
                         : type === "SWAP"
                         ? "Exchange for items"
+                        : type === "RENT"
+                        ? "Lend temporarily by the day"
                         : "Free for the community"}
                     </span>
                   </button>
@@ -407,23 +472,66 @@ export default function AddItemPage() {
                   <span>₹</span>
                   <input
                     type="number"
-                    min="0"
-                    step="1"
-                    placeholder="0"
+                    min={selectedTypes.includes("RENT") ? "0.01" : "0"}
+                    step="0.01"
+                    placeholder={selectedTypes.includes("RENT") ? "Price per day" : "0"}
                     value={price}
                     onChange={(event) => setPrice(event.target.value)}
-                    disabled={!selectedTypes.includes("SELL")}
+                    disabled={!selectedTypes.includes("SELL") && !selectedTypes.includes("RENT")}
                   />
                 </div>
-                <label className={`offer-toggle ${openToOffers ? "active" : ""}`}>
-                  <input
-                    type="checkbox"
-                    checked={openToOffers}
-                    onChange={() => setOpenToOffers((prev) => !prev)}
-                  />
-                  Open to Offers
-                </label>
+                {selectedTypes.includes("RENT") ? (
+                  <span className="form-note">Per day</span>
+                ) : (
+                  <label className={`offer-toggle ${openToOffers ? "active" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={openToOffers}
+                      onChange={() => setOpenToOffers((prev) => !prev)}
+                    />
+                    Open to Offers
+                  </label>
+                )}
               </div>
+              {selectedTypes.includes("RENT") ? (
+                <div className="rental-listing-fields">
+                  <div className="field-split">
+                    <div className="field-row">
+                      <label htmlFor="rental-deposit">Refundable security deposit (optional)</label>
+                      <input id="rental-deposit" type="number" min="0" step="0.01" value={securityDeposit}
+                        onChange={(event) => setSecurityDeposit(event.target.value)} placeholder="₹0" />
+                    </div>
+                    <div className="field-row">
+                      <label htmlFor="rental-min-days">Minimum rental days (optional)</label>
+                      <input id="rental-min-days" type="number" min="1" step="1" value={minimumRentalDays}
+                        onChange={(event) => setMinimumRentalDays(event.target.value)} placeholder="No minimum" />
+                    </div>
+                  </div>
+                  <div className="field-split">
+                    <div className="field-row">
+                      <label htmlFor="rental-from">Available from (optional)</label>
+                      <input id="rental-from" type="date" min={new Date().toLocaleDateString("en-CA")}
+                        value={rentalAvailableFrom} onChange={(event) => setRentalAvailableFrom(event.target.value)} />
+                    </div>
+                    <div className="field-row">
+                      <label htmlFor="rental-until">Available until (optional)</label>
+                      <input id="rental-until" type="date" min={rentalAvailableFrom || new Date().toLocaleDateString("en-CA")}
+                        value={rentalAvailableUntil} onChange={(event) => setRentalAvailableUntil(event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="field-row">
+                    <label htmlFor="rental-max-days">Maximum rental days (optional)</label>
+                    <input id="rental-max-days" type="number" min="1" step="1" value={maximumRentalDays}
+                      onChange={(event) => setMaximumRentalDays(event.target.value)} placeholder="No maximum" />
+                  </div>
+                  <div className="field-row">
+                    <label htmlFor="rental-instructions">Rental instructions and conditions (optional)</label>
+                    <textarea id="rental-instructions" maxLength={1000} value={rentalInstructions}
+                      onChange={(event) => setRentalInstructions(event.target.value)}
+                      placeholder="Share pickup arrangements or care instructions." />
+                  </div>
+                </div>
+              ) : null}
             </section>
 
             <section className="form-card">

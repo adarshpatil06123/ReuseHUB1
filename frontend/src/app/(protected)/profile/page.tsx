@@ -206,6 +206,10 @@ export default function ProfilePage() {
             <span>Purchase History</span>
             <span>&gt;</span>
           </Link>
+          <Link className="profile-link" href="/dashboard/rentals">
+            <span>Rental activity & history</span>
+            <span>&gt;</span>
+          </Link>
         </section>
       </main>
 

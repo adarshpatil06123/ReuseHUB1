@@ -51,10 +51,17 @@ type UserProfile = {
   ratingCount?: number;
 };
 
+type RentalSummary = {
+  id: string;
+  role: "OWNER" | "RENTER";
+  status: string;
+};
+
 export default function DashboardPage() {
   const { showToast } = useToast();
   const [listings, setListings] = useState<ListingResponse[]>([]);
   const [orders, setOrders] = useState<OrderResponse[]>([]);
+  const [rentals, setRentals] = useState<RentalSummary[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
@@ -66,12 +73,14 @@ export default function DashboardPage() {
     Promise.all([
       apiRequest<UserProfile>("/users/me").catch(() => null),
       apiRequest<ListingResponse[]>("/listings/me").catch(() => []),
-      apiRequest<OrderResponse[]>("/orders").catch(() => [])
-    ]).then(([userData, listingsData, ordersData]) => {
+      apiRequest<OrderResponse[]>("/orders").catch(() => []),
+      apiRequest<{ content: RentalSummary[] }>("/rentals?page=0&size=100").catch(() => ({ content: [] }))
+    ]).then(([userData, listingsData, ordersData, rentalsData]) => {
       if (!mounted) return;
       if (userData) setUser(userData);
       setListings(listingsData || []);
       setOrders(ordersData || []);
+      setRentals(rentalsData?.content || []);
       setLoading(false);
     });
 
@@ -91,6 +100,14 @@ export default function DashboardPage() {
   const activeListings = useMemo(() => {
     return listings.filter((l) => l.status === "ACTIVE");
   }, [listings]);
+
+  const rentalActionCount = useMemo(
+    () => rentals.filter((rental) =>
+      (rental.role === "OWNER" && rental.status === "PENDING")
+      || ["APPROVED", "READY_FOR_HANDOVER", "ACTIVE", "RETURN_REQUESTED"].includes(rental.status)
+    ).length,
+    [rentals]
+  );
 
   // Priority 1: Calculated Real Metrics
   const { totalEcoScore, carbonSavedKg, completedCount } = useMemo(() => {
@@ -176,7 +193,8 @@ export default function DashboardPage() {
     if (type === "SWAP") return "Swap";
     if (type === "DONATE" || !val) return "Free";
     const num = Number(val);
-    return Number.isNaN(num) ? `₹${val}` : `₹${num.toLocaleString("en-IN")}`;
+    const price = Number.isNaN(num) ? `₹${val}` : `₹${num.toLocaleString("en-IN")}`;
+    return type === "RENT" ? `${price} / day` : price;
   };
 
   return (
@@ -211,6 +229,14 @@ export default function DashboardPage() {
               </div>
               <div className="stat-icon">🌱</div>
             </div>
+            <Link className="stat-card" href="/dashboard/rentals">
+              <div>
+                <span className="stat-label">Rental activity</span>
+                <strong>{rentalActionCount}</strong>
+                <span className="stat-sub">Requests and ongoing rentals · View activity</span>
+              </div>
+              <div className="stat-icon">↔</div>
+            </Link>
             <div className="stat-card">
               <div>
                 <span className="stat-label">Active Listings</span>

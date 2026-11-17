@@ -35,6 +35,18 @@ export type OrderNotification = {
   createdAt: string;
 };
 
+export type RentalNotification = {
+  notificationType: "RENTAL";
+  notificationId: string;
+  rentalId: string;
+  listingId: number;
+  listingTitle: string;
+  actorName: string;
+  content: string;
+  status: string;
+  createdAt: string;
+};
+
 export type ListingNotification = {
   notificationType: "NEED_MATCH" | "RELISTING";
   notificationId: string;
@@ -45,11 +57,35 @@ export type ListingNotification = {
   createdAt: string;
 };
 
-export type AppNotification = ChatNotification | OrderNotification | ListingNotification;
+export type AppNotification = ChatNotification | OrderNotification | RentalNotification | ListingNotification;
 
 function parseNotification(payload: unknown): AppNotification | null {
   if (!payload || typeof payload !== "object") return null;
   const value = payload as Record<string, unknown>;
+
+  if (
+    value.notificationType === "RENTAL" &&
+    typeof value.notificationId === "string" &&
+    typeof value.rentalId === "string" &&
+    typeof value.listingId === "number" &&
+    typeof value.listingTitle === "string" &&
+    typeof value.actorName === "string" &&
+    typeof value.content === "string" &&
+    typeof value.status === "string" &&
+    typeof value.createdAt === "string"
+  ) {
+    return {
+      notificationType: "RENTAL",
+      notificationId: value.notificationId,
+      rentalId: value.rentalId,
+      listingId: value.listingId,
+      listingTitle: value.listingTitle,
+      actorName: value.actorName,
+      content: value.content,
+      status: value.status,
+      createdAt: value.createdAt
+    };
+  }
 
   if (
     (value.notificationType === "NEED_MATCH" || value.notificationType === "RELISTING") &&
@@ -258,8 +294,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const handleOpenNotification = (notif: AppNotification) => {
     setActivePopup(null);
     setUnreadCount((c) => Math.max(0, c - 1));
-    router.push(notif.notificationType === "ORDER"
-      ? "/dashboard/orders"
+    router.push(notif.notificationType === "RENTAL"
+      ? "/dashboard/rentals"
+      : notif.notificationType === "ORDER"
+        ? "/dashboard/orders"
       : notif.notificationType === "CHAT"
         ? notif.listingId === 0
           ? `/marketplace/0/chat?userId=${notif.senderId}`
@@ -300,6 +338,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                 <span className="toast-badge">
                   {activePopup.notificationType === "ORDER"
                     ? "Order update"
+                    : activePopup.notificationType === "RENTAL"
+                      ? "Rental update"
                     : activePopup.notificationType === "CHAT"
                       ? "New message"
                       : activePopup.notificationType === "NEED_MATCH"
